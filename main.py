@@ -4,6 +4,7 @@ import os
 #import json
 from keep_alive import keep_alive
 from replit import db
+import random
 
 client = discord.Client()
 
@@ -11,8 +12,21 @@ if "users" not in db.keys():
   db["users"] = []
 
 def getDefaultUser(id):
-  return({"user_ID": id, "conv_state": 0, "purpose": 0, "email": ""})
+  return({"user_ID": id, "conv_state": 0, "purpose": None, "email": None, "react_msg_id": None, "verify_code": None, "attempts": 0})
 
+def getUserFromDB(id):
+  for i in db["users"]:
+    if (i["user_ID"] == id):
+      return((i, True))
+  return((getDefaultUser(id), False))
+
+def updateUserInDB(user):
+  for i in db["users"]:
+    if (user["user_ID"] == i["user_ID"]):
+      i = user
+
+def sendEmail(user):
+  pass
 
 @client.event
 async def on_ready():
@@ -34,127 +48,88 @@ Conversation state:
   otherwise ask to renter code, email or cancel. 
   if code go to 2 if email go to 1 if cancel go to 99
 
+96 - Verified
+
+97 - Pause interaction
 
 98 - Respond: will review this message and get back to you.
 
 99 - Canceled entry. Kick from server
 '''
-messages = {"welcome": "Welcome stand-in text"}
-#User db format:
-#{"user_ID": integer, "conv_state": integer, "purpose": integer, "email": ""},... {}]\
+messages = {"welcome": "Welcome stand-in text", "welcome_reactions": [":one:", ":two:", ":three:", ":four:", ":stop_sign:"], "email": "sample email request text","verify": "sample verify text", "complete": "default complete text"}
 
 async def msg(context, user: discord.User, message):
     await user.send(message)
 
 @client.event
 async def on_member_join(member):
-  saved = True
-  for i in db["users"]:
-    if (i["user_ID"] == member.id):
-      saved = True
-      data = i
-      break
-  if(saved == False):
-    data = getDefaultUser(member.id)
-    db["users"].append(data)
-  if(data["conv_state"] == 0):
+  print("triggered - join")
+  user = getUserFromDB(member.id)
+  if (member == client.user):
+    pass
+  elif (not user[1]):
+    db["users"].append(user[0])
+  elif(user[0]["conv_state"] == 0):
     await client.create_dm(member)
-    await client.send_message(member.dm_channel, messages["welcome"])
-  
-async def on_message(message):
-  saved = False
+    msg = await client.send_message(member.dm_channel, messages["welcome"])
+    for emoji in messages["welcome_reactions"]:
+      await client.add_reaction(msg, emoji)
 
+@client.event
+async def on_raw_reaction_add(payload):
+  print("triggered - react")
+  if (payload.event_type == "REACTION_ADD"):
+    pass
+  elif (payload.member == client.user):
+    pass
+  elif (payload.message_id == getUserFromDB(payload.member.id)[0]["react_msg_id"]):
+    data = getUserFromDB(payload.member.id)[0]
+    if (data["conv_state"] == 0):
+      if (payload.emoji.name == ":one:"):
+        data["purpose"] = 1
+      elif (payload.emoji.name == ":two:"):
+        data["purpose"] = 2
+      elif (payload.emoji.name == ":three:"):
+        data["purpose"] = 3
+      elif (payload.emoji.name == ":four:"):
+        data["purpose"] = 4
+      elif (payload.emoji.name == ":stop_sign:"):
+        data["purpose"] = 0
+        data["conv_state"] = 97
+    if (data["purpose"] == 1 or data["purpose"] == 2 or data["purpose"] == 3):
+      await client.send_message(payload.member.dm_channel, messages["email"])
+      data["conv_state"] = 2
+  updateUserInDB(data)
+
+@client.event
+async def on_message(message):
+  print("triggered - message")
   if message.author == client.user:
     return
-  if(message.author.dm_channel != None and message.author.dm_channel == message.channel):
-    pass
-  for i in db["users"]:
-    if (i["user_ID"] == message.author.id):
-      saved = True
-      break
-  if(saved == False):
-    db["users"].append(getDefaultUser(message.author.id))
-  
-  # Select the appropriate user entry
-  for user in db["users"]:
-      if (user["user_ID"] == message.author.id):
+  user = getUserFromDB(message.author.id)
+  if (not user[1]):
+    db["users"].append(user[0])
+  if (message.author.dm_channel == message.channel):
+    if (user[0]["conv_state"] == 2):
+      if (message.content.strip().find("@mytru.ca", 1) != -1 or message.content.strip().find("@tru.ca", 1) != -1):
+        user["email"] = message.content.strip()
+        user["verify_code"] = random.randint(10000, 99999)
+        user["conv_state"] = 3
+        sendEmail(user)
+        await client.send_message(message.author.dm_channel, messages["verify"])
+    elif (user[0]["conv_state"] == 3):
+      try:
+        if (message.content.strip() == user[0]["verify_code"]):
+          await client.send_message(message.author.dm_channel, messages["complete"])
+          user[0]["conv_state"] = 96
+      except:
+        if (message.content == "resend"):
+          await client.send_message(message.author.dm_channel, messages["email"])
+          user["conv_state"] = 2
+      else:
+        user["attempts"] += 1
+  updateUserInDB(user[0])
 
-      #COMMANDS
-
-        # NEW CHARACTER COMMAND
-        if msg.startswith("$new"):
-          if (user["char_name"] != ""):
-            user["conv_state"] = 2
-            await message.channel.send("You already have a character stored. Would you like to overwrite? (y/n)")
-            break
-          else:
-            user["conv_state"] = 1
-            await message.channel.send("You have now initiated character creation.\nPlease type your character's name.")
-            break
-
-        # MOVE USER COMMAND
-        elif message.content.startswith('$move'):
-          channel = client.get_channel(891630860841918504)
-          await message.author.move_to(channel)
-          print("Moved " + message.author.name)
-          break
-        
-        # USER DATA COMMAND
-        elif message.content.startswith('$data'):
-          await message.channel.send(user)
-          break
-
-        # PAUSE COMMAND
-        elif message.content.startswith('$pause'):
-          member = await client.fetch_user(int(os.environ['DM']))
-          await member.send(str(message.author) + " (" + user["char_name"] + ") has requested a pause!")
-          break
-          
-        
-      #CONV_STATES
-
-        #1 - Character name
-        elif (user["conv_state"] == 1):
-          user["char_name"] = msg
-          user["conv_state"] = 3
-          await message.channel.send("Hi, " + msg + ". Enter your character's modifiers for each stat.\n Enter them in one message in the order of STR DEX CON INT WIS CHA. (eg. -1 2 4 -3 2 2)")
-          break
-        
-        #2 - Overwrite Request
-        elif (user["conv_state"] == 2):
-          try:
-            if ((msg.lower() == "y") or (msg.lower() == "ye") or (msg.lower() == "yes")):
-              user["conv_state"] = 1
-              await message.channel.send("You have now initiated character creation.\nPlease type your character's name.")
-              break
-            elif (msg.lower() == "n" or msg.lower() == "no"):
-              user["conv_state"] = 0
-              await message.channel.send("Okay!")
-              break
-            else:
-              await message.channel.send("Invalid entry. Please try again")
-              break
-          except:
-            await message.channel.send("Invalid entry. Please try again")
-            break
-
-        #3 - Character stats
-        elif (user["conv_state"] == 3):
-          try:
-            msg = msg.strip()
-            msg = msg.split(" ", 5)
-            for i in range(6):
-              msg[i] = int(msg[i])
-            user["stats"] = msg
-            user["conv_state"] = 0
-            await message.channel.send("Awesome, your character has been saved!")
-            break
-              
-          except:
-            await message.channel.send("Invalid entry. Please try again")
-            break
-        
-       
   
 
 #discord.on_member_update(before, after)
