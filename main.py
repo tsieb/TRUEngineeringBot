@@ -5,135 +5,131 @@ import os
 from keep_alive import keep_alive
 from replit import db
 import random
+from functions import getDefaultUser, getUserFromDB, updateUserInDB, sendVerification
 
-client = discord.Client()
+# Initialize client
+intents = discord.Intents.default()
+intents.members = True
+client = discord.Client(intents = intents)
 
-if "users" not in db.keys():
+# Define messages
+
+reset = True
+# Ensure Users are defined in the database
+if ("users" not in db.keys() or reset == True):
   db["users"] = []
 
-def getDefaultUser(id):
-  return({"user_ID": id, "conv_state": 0, "purpose": None, "email": None, "react_msg_id": None, "verify_code": None, "attempts": 0})
-
-def getUserFromDB(id):
-  for i in db["users"]:
-    if (i["user_ID"] == id):
-      return((i, True))
-  return((getDefaultUser(id), False))
-
-def updateUserInDB(user):
-  for i in db["users"]:
-    if (user["user_ID"] == i["user_ID"]):
-      i = user
-
-def sendEmail(user):
-  pass
+# Define messages
+#if "messages" not in db.keys():
+if True:
+  db["messages"] = {"welcome": "Welcome stand-in text", "welcome_reactions": ["\U00000031\U0000fe0f\U000020e3", "2️⃣", "3️⃣", "4️⃣", "🛑"] , "email" : "sample email request text","verify": "sample verify text", "complete": "default complete text"}
+messages = db["messages"]
 
 @client.event
 async def on_ready():
   print('We have logged in as {0.user}'.format(client))
 
-'''
-Conversation state:
-0 - Initiate conversation on join.
-  Welcome to the TRUEngineering Server. 
-  Are you joining as an engineering student, looking for the engineering program, both or neither?
-  store answer with user
-    if 1, 2, or 3 go to 1. If 4 ask for reason of joining and go to 98
-  
-1 - Request email
-  If valid email given. Generate code. Send email. go to 2
-
-2 - Check entered code against stored user code
-  If correct code. give user active role based on original request. go to 5
-  otherwise ask to renter code, email or cancel. 
-  if code go to 2 if email go to 1 if cancel go to 99
-
-96 - Verified
-
-97 - Pause interaction
-
-98 - Respond: will review this message and get back to you.
-
-99 - Canceled entry. Kick from server
-'''
-messages = {"welcome": "Welcome stand-in text", "welcome_reactions": [":one:", ":two:", ":three:", ":four:", ":stop_sign:"], "email": "sample email request text","verify": "sample verify text", "complete": "default complete text"}
-
-async def msg(context, user: discord.User, message):
-    await user.send(message)
 
 @client.event
 async def on_member_join(member):
-  print("triggered - join")
+  print("triggered - join by ", member.name)
   user = getUserFromDB(member.id)
   if (member == client.user):
     pass
   elif (not user[1]):
     db["users"].append(user[0])
-  elif(user[0]["conv_state"] == 0):
-    await client.create_dm(member)
-    msg = await client.send_message(member.dm_channel, messages["welcome"])
-    for emoji in messages["welcome_reactions"]:
-      await client.add_reaction(msg, emoji)
+  user[0]["conv_state"] = 0
+  if(user[0]["conv_state"] == 0):
+    print("Sending message to", member.display_name)
+
+    msg = await member.send(db["messages"]["welcome"])
+    user[0]["react_msg_id"] = msg.id
+    for emoji in db["messages"]["welcome_reactions"]:
+      await msg.add_reaction(emoji)
+  updateUserInDB(user[0])
 
 @client.event
 async def on_raw_reaction_add(payload):
-  print("triggered - react")
-  if (payload.event_type == "REACTION_ADD"):
+  print("triggered - react from", payload.user_id)
+  if (payload.event_type != "REACTION_ADD"):
     pass
-  elif (payload.member == client.user):
+  elif (payload.user_id == client.user.id):
     pass
-  elif (payload.message_id == getUserFromDB(payload.member.id)[0]["react_msg_id"]):
-    data = getUserFromDB(payload.member.id)[0]
+  elif (payload.message_id == getUserFromDB(payload.user_id)[0]["react_msg_id"]):
+    data = getUserFromDB(payload.user_id)[0]
     if (data["conv_state"] == 0):
-      if (payload.emoji.name == ":one:"):
+      if ([f"0x{ord(c):08x}" for c in payload.emoji.name] == ['0x00000031', '0x0000fe0f', '0x000020e3']):
+
         data["purpose"] = 1
-      elif (payload.emoji.name == ":two:"):
+      elif ([f"0x{ord(c):08x}" for c in payload.emoji.name] == ['0x00000032', '0x0000fe0f', '0x000020e3']):
+
         data["purpose"] = 2
-      elif (payload.emoji.name == ":three:"):
+      elif ([f"0x{ord(c):08x}" for c in payload.emoji.name] == ['0x00000033', '0x0000fe0f', '0x000020e3']):
+
         data["purpose"] = 3
-      elif (payload.emoji.name == ":four:"):
+      elif ([f"0x{ord(c):08x}" for c in payload.emoji.name] == ['0x00000034', '0x0000fe0f', '0x000020e3']):
+
         data["purpose"] = 4
-      elif (payload.emoji.name == ":stop_sign:"):
+      elif ([f"0x{ord(c):08x}" for c in payload.emoji.name] == ['0x0001f6d1']):
+
         data["purpose"] = 0
-        data["conv_state"] = 97
+        data["conv_state"] = 0
     if (data["purpose"] == 1 or data["purpose"] == 2 or data["purpose"] == 3):
-      await client.send_message(payload.member.dm_channel, messages["email"])
+      await client.get_user(payload.user_id).send(messages["email"])
       data["conv_state"] = 2
-  updateUserInDB(data)
+    updateUserInDB(data)
+
 
 @client.event
 async def on_message(message):
-  print("triggered - message")
+  print("triggered - message from", message.author.name)
   if message.author == client.user:
     return
   user = getUserFromDB(message.author.id)
   if (not user[1]):
+    print("new")
     db["users"].append(user[0])
   if (message.author.dm_channel == message.channel):
-    if (user[0]["conv_state"] == 2):
+    if(user[0]["conv_state"] == 0):
+      print("Sending message to", message.author.display_name)
+      msg = await message.author.send(db["messages"]["welcome"])
+      user[0]["react_msg_id"] = msg.id
+      for emoji in db["messages"]["welcome_reactions"]:
+        await msg.add_reaction(emoji)
+    elif (user[0]["conv_state"] == 2):
+
       if (message.content.strip().find("@mytru.ca", 1) != -1 or message.content.strip().find("@tru.ca", 1) != -1):
-        user["email"] = message.content.strip()
-        user["verify_code"] = random.randint(10000, 99999)
-        user["conv_state"] = 3
-        sendEmail(user)
-        await client.send_message(message.author.dm_channel, messages["verify"])
+        user[0]["email"] = message.content.strip("")
+        user[0]["verify_code"] = random.randint(10000, 99999)
+        user[0]["conv_state"] = 3
+        sendVerification(user[0])
+        await message.author.send(messages["verify"])
     elif (user[0]["conv_state"] == 3):
+      if (message.content.startswith("resend")):
+        sendVerification(user[0])
+      elif (message.content.startswith("change")):
+        await message.author.send(messages["email"])
+        user[0]["conv_state"] = 2
       try:
-        if (message.content.strip() == user[0]["verify_code"]):
-          await client.send_message(message.author.dm_channel, messages["complete"])
+        print(type(user[0]["verify_code"]))
+        print(user[0]["verify_code"])
+        print(type(int(message.content.strip())))
+        print(int(message.content.strip()))
+        if (int(message.content.strip()) == user[0]["verify_code"]):
+          await message.author.send(messages["complete"])
           user[0]["conv_state"] = 96
-      except:
-        if (message.content == "resend"):
-          await client.send_message(message.author.dm_channel, messages["email"])
-          user["conv_state"] = 2
+      except Exception as e: 
+        print(e)
       else:
-        user["attempts"] += 1
+        user[0]["attempts"] += 1
   updateUserInDB(user[0])
 
   
 
 #discord.on_member_update(before, after)
 #discord.on_voice_state_update(member, before, after)
-
+print("Starting keep_alive script")
 keep_alive()
+print("Running Bot")
 client.run(os.environ['Token'])
+print("Bot is dead")
