@@ -1,19 +1,11 @@
 {
   "files": {
-    "functions.py": [
-      {
-        "id": "e6de4cbe-8201-4e30-abd1-02648d504987",
-        "line": 42,
-        "version": 1359,
-        "index": 1205
-      }
-    ],
     "main.py": [
       {
         "id": "46ebc8a9-a94f-4b8e-aeeb-fda0c0de8457",
-        "line": 56,
-        "version": 6491,
-        "index": 1653
+        "line": 48,
+        "version": 10664,
+        "index": 2240
       }
     ]
   }

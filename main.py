@@ -1,135 +1,186 @@
 import discord
 import os
-#import requests
-#import json
 from keep_alive import keep_alive
 from replit import db
 import random
-from functions import getDefaultUser, getUserFromDB, updateUserInDB, sendVerification
+from functions import *
+from datetime import datetime
 
+# TODO:
+# code lockout
+# verify command to restart
+# make welcome message more robust/simplify ifelse spam
+# after verification - free change state
+# slash commands
+
+# BUGS:
+
+
+# Define messages
+messages = {"welcome": "Welcome to the TRU Engineering Discord server.\nPlease use the reactions below to define your reason for joining the server.\n1 - Engineering Student\n2 - TRUSU Engineering Club\n3 - Engineering Student and Club\n4 - Neither an engineering student nor a club member\n5 - TRU professor\nStop will halt all further messages\n*At any point you can type `restart` to begin the process again.*", "welcome_reactions": ["\U00000031\U0000fe0f\U000020e3", "\U00000032\U0000fe0f\U000020e3", "\U00000033\U0000fe0f\U000020e3", "\U00000034\U0000fe0f\U000020e3", "\U00000035\U0000fe0f\U000020e3" "🛑"] , "email" : "Please type your TRU email. It must end with `@mytru.ca` or `@tru.ca`.","verify": "A Verification emaill has been sent to you. Please enter the code provided below.\n*Enter `resend` to resend the email to the same address\nEnter `change` to enter a new email address*", "complete": "Thanks for verifying your account! You now have access to the server. Please read the rules before chatting. If you ever decide to leave the server, all your data will be deleted and you will need to re-verify. All the code for the bot can be viewed on GitHub", "invalid_email": "The email you entered is invalid", "invalid_code": "The code you entered is wrong", "manual": "Why would you like to join the TRU Engineering Discord server?\nYour reply will be sent directly to the admin for manual verification.", "manual_response": "You will be notified within 48 hours of the result.", "limit_reached":"You have entered the maximum number of attempts. If you still wish to gain access to the server, DM the admin."}
+
+db["messages"] = messages
+
+
+print("Starting...")
 # Initialize client
 intents = discord.Intents.default()
 intents.members = True
 client = discord.Client(intents = intents)
 
-# Define messages
 
-reset = True
-# Ensure Users are defined in the database
-if ("users" not in db.keys() or reset == True):
-  db["users"] = []
 
-# Define messages
-#if "messages" not in db.keys():
-if True:
-  db["messages"] = {"welcome": "Welcome stand-in text", "welcome_reactions": ["\U00000031\U0000fe0f\U000020e3", "2️⃣", "3️⃣", "4️⃣", "🛑"] , "email" : "sample email request text","verify": "sample verify text", "complete": "default complete text"}
-messages = db["messages"]
+
 
 @client.event
 async def on_ready():
   print('We have logged in as {0.user}'.format(client))
 
+@client.event
+async def on_member_remove(member):
+  await dm_print(client, member.display_name + "left the server")
+  delete_user(id = member.id)
 
 @client.event
 async def on_member_join(member):
-  print("triggered - join by ", member.name)
-  user = getUserFromDB(member.id)
+  await dm_print(client, member.display_name + "joined the server")
   if (member == client.user):
-    pass
-  elif (not user[1]):
-    db["users"].append(user[0])
-  user[0]["conv_state"] = 0
-  if(user[0]["conv_state"] == 0):
-    print("Sending message to", member.display_name)
-
-    msg = await member.send(db["messages"]["welcome"])
-    user[0]["react_msg_id"] = msg.id
-    for emoji in db["messages"]["welcome_reactions"]:
-      await msg.add_reaction(emoji)
-  updateUserInDB(user[0])
+    return
+  await initial_message(client, member)
 
 @client.event
 async def on_raw_reaction_add(payload):
-  print("triggered - react from", payload.user_id)
-  if (payload.event_type != "REACTION_ADD"):
-    pass
-  elif (payload.user_id == client.user.id):
-    pass
-  elif (payload.message_id == getUserFromDB(payload.user_id)[0]["react_msg_id"]):
-    data = getUserFromDB(payload.user_id)[0]
-    if (data["conv_state"] == 0):
+  if (payload.user_id == client.user.id):
+    return
+  if(is_new(payload.user_id)):
+    return
+  user = get_user(payload.user_id)
+  if (payload.message_id == user["react_msg_id"]):
+    if (user["conv_state"] == 0):
       if ([f"0x{ord(c):08x}" for c in payload.emoji.name] == ['0x00000031', '0x0000fe0f', '0x000020e3']):
-
-        data["purpose"] = 1
+        user["purpose"] = 1
       elif ([f"0x{ord(c):08x}" for c in payload.emoji.name] == ['0x00000032', '0x0000fe0f', '0x000020e3']):
-
-        data["purpose"] = 2
+        user["purpose"] = 2
       elif ([f"0x{ord(c):08x}" for c in payload.emoji.name] == ['0x00000033', '0x0000fe0f', '0x000020e3']):
-
-        data["purpose"] = 3
+        user["purpose"] = 3
       elif ([f"0x{ord(c):08x}" for c in payload.emoji.name] == ['0x00000034', '0x0000fe0f', '0x000020e3']):
-
-        data["purpose"] = 4
+        user["purpose"] = 4
       elif ([f"0x{ord(c):08x}" for c in payload.emoji.name] == ['0x0001f6d1']):
+        user["purpose"] = None
+        user["conv_state"] = 0
+      if (user["purpose"] == 1 or user["purpose"] == 2 or user["purpose"] == 3):
+        user_obj = client.get_user(payload.user_id)
+        await log_print(client, "Sending email message to" + user_obj.display_name)
+        await user_obj.send(messages["email"])
+        user["conv_state"] = 2
+      else:
+        await log_print(client, "Sending manual verification message to" + user_obj.display_name)
+        await user_obj.send(messages["manual"])
+        user["conv_state"] = 4
+  await update_user(user, client)
 
-        data["purpose"] = 0
-        data["conv_state"] = 0
-    if (data["purpose"] == 1 or data["purpose"] == 2 or data["purpose"] == 3):
-      await client.get_user(payload.user_id).send(messages["email"])
-      data["conv_state"] = 2
-    updateUserInDB(data)
-
-
+# TODO if conv = 0 and msgid = None send welcome
 @client.event
 async def on_message(message):
-  print("triggered - message from", message.author.name)
   if message.author == client.user:
     return
-  user = getUserFromDB(message.author.id)
-  if (not user[1]):
-    print("new")
-    db["users"].append(user[0])
-  if (message.author.dm_channel == message.channel):
-    if(user[0]["conv_state"] == 0):
-      print("Sending message to", message.author.display_name)
-      msg = await message.author.send(db["messages"]["welcome"])
-      user[0]["react_msg_id"] = msg.id
-      for emoji in db["messages"]["welcome_reactions"]:
-        await msg.add_reaction(emoji)
-    elif (user[0]["conv_state"] == 2):
+  if(is_admin(message.author.id)):
+    cmd = message.content.split()
 
-      if (message.content.strip().find("@mytru.ca", 1) != -1 or message.content.strip().find("@tru.ca", 1) != -1):
-        user[0]["email"] = message.content.strip("")
-        user[0]["verify_code"] = random.randint(10000, 99999)
-        user[0]["conv_state"] = 3
-        sendVerification(user[0])
-        await message.author.send(messages["verify"])
-    elif (user[0]["conv_state"] == 3):
-      if (message.content.startswith("resend")):
-        sendVerification(user[0])
-      elif (message.content.startswith("change")):
-        await message.author.send(messages["email"])
-        user[0]["conv_state"] = 2
+  # ---- ADMIN COMMANDS ----
+    # --- ADD ---
+    if(message.content.startswith("$add")):
+      initial_message(client, member = None, id = cmd[1])
+    
+    # --- DELETE ---
+    elif(message.content.startswith("$delete")):
+      delete_user(cmd[1])
+    
+    # --- RESET ---
+    elif(message.content.startswith("$delete")):
+      user = get_user(cmd[1])
+      user["conv_state"] = 0
+      update_user(user)
+      initial_message(client, member = None, id = cmd[1])
+    
+    # --- EMAIL ---
+    elif(message.content.startswith("$email")):
+      await message.author.send("""sender = \"\", receiver = \"\", message = \"\", sender_nick = \"\", subject = \"\",reply = \"\"""")
+    elif(message.content.startswith("$send")):
+      send_admin_mail(sender = cmd[1], receiver = cmd[2], message = cmd[3], sender_nick = cmd[4], subject = cmd[5], reply = cmd[6])
+
+    # --- MSG ---
+    elif(message.content.startswith("$msg")):
       try:
-        print(type(user[0]["verify_code"]))
-        print(user[0]["verify_code"])
-        print(type(int(message.content.strip())))
-        print(int(message.content.strip()))
-        if (int(message.content.strip()) == user[0]["verify_code"]):
-          await message.author.send(messages["complete"])
-          user[0]["conv_state"] = 96
-      except Exception as e: 
+        msg = ""
+        for i in cmd[2:]:
+          msg += i
+        target = await client.fetch_user(cmd[1])
+        await target.send(msg)
+      except Exception as e:
         print(e)
+        await message.author.send("Invalid target")
+
+
+  print(message.author.display_name, "messaged", message.content)
+  if (is_new(message.author.id)):
+    add_user(message.author.id)
+    await initial_message(client, message.author)
+  user = get_user(message.author.id)
+  if (message.author.dm_channel == message.channel):
+    
+  # ---- USER DM COMMANDS ----
+    # --- RESTART ---
+    if(message.content.startswith("restart")):
+      user["conv_state"] = 0
+      user["react_msg_id"] = None
+
+    # --- RESEND ---
+    elif (message.content.startswith("resend") and user["conv_state"] == 3):
+      sendVerification(user)
+
+    # --- CHANGE ---
+    elif (message.content.startswith("change") and user["conv_state"] == 3):
+      await log_print(client, "Sending email message to " + message.author.display_name)
+      await message.author.send(messages["email"])
+      user["conv_state"] = 2
+
+    #TODO move back to function
+    if(user["conv_state"] == 0 and user["react_msg_id"] == None):
+      await initial_message(client, message.author)
+      
+    elif (user["conv_state"] == 2):
+      if (message.content.strip().find("@mytru.ca", 1) != -1 or message.content.strip().find("@tru.ca", 1) != -1):
+        user["email"] = message.content.strip("")
+        user["verify_code"] = random.randint(10000, 99999)
+        user["conv_state"] = 3
+        sendVerification(user)
+        await log_print(client, "Sending verify message to " + message.author.display_name)
+        await message.author.send(messages["verify"])
       else:
-        user[0]["attempts"] += 1
-  updateUserInDB(user[0])
+        await message.author.send(messages["invalid_email"])
 
-  
+    elif (user["conv_state"] == 3):
+      try:
+        if (int(message.content.strip()) == user["verify_code"]):
+          await log_print(client, "Sending complete message to " + message.author.display_name)
+          await message.author.send(messages["complete"])
+          user["conv_state"] = 96
+        else:
+          user["attempts"] += 1
+          await log_print(client, "User has made " + str(user["attempts"]) + "attempts")
+          await message.author.send(messages["invalid_code"])
+      except: 
+        pass
+      if (user["attempts"] >= 10):
+        user["conv_state"] = 90
+        await message.author.send(messages["limit_reached"])
+  await update_user(user, client)
 
-#discord.on_member_update(before, after)
-#discord.on_voice_state_update(member, before, after)
+
 print("Starting keep_alive script")
 keep_alive()
 print("Running Bot")
 client.run(os.environ['Token'])
+sendEmail(port = 465, server = "mail.sieb.net", sender = "TRUEBot@engclub.ca", receiver = "trenton@sieb.net", password = str(os.environ['mail_pass']), message = "The bot has died at {deathtime}.".format(deathtime = datetime.now()), reply = "", sender_nick = "TRUE Discord Bot", subject = "FATAL ERROR", username = str(os.environ['username']))
 print("Bot is dead")

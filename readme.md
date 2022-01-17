@@ -10,9 +10,11 @@ A choice is offered between joining the server as an engineering student, a club
 The choice is offered by sending a message with five reactions available to the user.
 If the user reacts to the message using the emojis provided, specific actions are taken.
 
-1. Set `user["conv_state"] = 1` and `user["purpose"] = 1` 
-2. Set `user["conv_state"] = 1` and `user["purpose"] = 2`
-3. Set `user["conv_state"] = 1` and `user["purpose"] = 1`
+1. `user["purpose"] = 1` 
+2. `user["purpose"] = 2`
+3. `user["purpose"] = 3`
+4. `user["purpose"] = 4`
+5. `user["purpose"] = None`
  
 ### 1. - *Request email*
 
@@ -20,7 +22,7 @@ If the user reacts to the message using the emojis provided, specific actions ar
 The 1, 2, or 3 go to 1. If 4 ask for reason of joining and go to 98
   If valid email given. Generate code. Send email. go to 2
 
-2 - Check entered code against stored user code
+### 2 - *Check entered code against stored user code*
   If correct code. give user active role based on original request. go to 5
   otherwise ask to renter code, email or cancel. 
   if code go to 2 if email go to 1 if cancel go to 99
