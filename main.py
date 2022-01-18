@@ -7,19 +7,21 @@ from functions import *
 from datetime import datetime
 
 # TODO:
-# code lockout
 # verify command to restart
 # make welcome message more robust/simplify ifelse spam
 # after verification - free change state
 # slash commands
+# move each event to seperate file
 
 # BUGS:
 
 
 # Define messages
-messages = {"welcome": "Welcome to the TRU Engineering Discord server.\nPlease use the reactions below to define your reason for joining the server.\n1 - Engineering Student\n2 - TRUSU Engineering Club\n3 - Engineering Student and Club\n4 - Neither an engineering student nor a club member\n5 - TRU professor\nStop will halt all further messages\n*At any point you can type `restart` to begin the process again.*", "welcome_reactions": ["\U00000031\U0000fe0f\U000020e3", "\U00000032\U0000fe0f\U000020e3", "\U00000033\U0000fe0f\U000020e3", "\U00000034\U0000fe0f\U000020e3", "\U00000035\U0000fe0f\U000020e3" "🛑"] , "email" : "Please type your TRU email. It must end with `@mytru.ca` or `@tru.ca`.","verify": "A Verification emaill has been sent to you. Please enter the code provided below.\n*Enter `resend` to resend the email to the same address\nEnter `change` to enter a new email address*", "complete": "Thanks for verifying your account! You now have access to the server. Please read the rules before chatting. If you ever decide to leave the server, all your data will be deleted and you will need to re-verify. All the code for the bot can be viewed on GitHub", "invalid_email": "The email you entered is invalid", "invalid_code": "The code you entered is wrong", "manual": "Why would you like to join the TRU Engineering Discord server?\nYour reply will be sent directly to the admin for manual verification.", "manual_response": "You will be notified within 48 hours of the result.", "limit_reached":"You have entered the maximum number of attempts. If you still wish to gain access to the server, DM the admin."}
-
+messages = {"welcome": "Welcome to the TRU Engineering Discord server.\nPlease use the reactions below to define your reason for joining the server.\n1 - Engineering Student\n2 - TRUSU Engineering Club\n3 - Engineering Student and Club\n4 - Neither an engineering student nor a club member\n5 - TRU professor\nStop will halt all further messages\n*At any point you can type `restart` to begin the process again.*", "welcome_reactions": ["\U00000031\U0000fe0f\U000020e3", "\U00000032\U0000fe0f\U000020e3", "\U00000033\U0000fe0f\U000020e3", "\U00000034\U0000fe0f\U000020e3", "\U00000035\U0000fe0f\U000020e3", "🛑"] , "email" : "Please type your TRU email. It must end with `@mytru.ca` or `@tru.ca`.","verify": "A Verification emaill has been sent to you. Please enter the code provided below.\n*Enter `resend` to resend the email to the same address\nEnter `change` to enter a new email address*", "complete": "Thanks for verifying your account! You now have access to the server. Please read the rules before chatting. If you ever decide to leave the server, all your data will be deleted and you will need to re-verify. All the code for the bot can be viewed on GitHub", "invalid_email": "The email you entered is invalid", "invalid_code": "The code you entered is wrong", "manual": "Why would you like to join the TRU Engineering Discord server?\nYour reply will be sent directly to the admin for manual verification.", "manual_response": "You will be notified within 48 hours of the result.", "limit_reached":"You have entered the maximum number of attempts. If you still wish to gain access to the server, DM the admin."}
 db["messages"] = messages
+
+roles = {"club": 931759411641331752, "student": 887072932604575796, "unverified": 932086744776605729}
+db["roles"] = roles
 
 
 print("Starting...")
@@ -28,33 +30,84 @@ intents = discord.Intents.default()
 intents.members = True
 client = discord.Client(intents = intents)
 
+async def log(message, channel):
+  if channel == 0:
+    log0 = await client.fetch_channel(932902698926374943)
+    await log0.send(message)
+  else:
+    log0 = await client.fetch_channel(932902698926374943)
+    log1 = await client.fetch_channel(750519246269972490)
+    await log0.send(message)
+    await log1.send(message)
+  print(message)
 
 
+async def add_role(user_id, role_id):
+  guild = client.get_guild(623986499477700652)
+  member = guild.get_member(user_id)
+  role = guild.get_role(role_id)
+  await member.add_roles(role)
 
+async def remove_role(user_id, role_id):
+  guild = client.get_guild(623986499477700652)
+  member = guild.get_member(user_id)
+  role = guild.get_role(role_id)
+  await member.remove_roles(role)
+  
 
 @client.event
 async def on_ready():
-  print('We have logged in as {0.user}'.format(client))
+  await log('We have logged in as {0.user}'.format(client), 1)
+
+
 
 @client.event
 async def on_member_remove(member):
-  await dm_print(client, member.display_name + "left the server")
   delete_user(id = member.id)
+  await log('{0.display_name} has left the server'.format(member), 1)
+
+
 
 @client.event
 async def on_member_join(member):
-  await dm_print(client, member.display_name + "joined the server")
   if (member == client.user):
     return
   await initial_message(client, member)
+  await log('{0.display_name} has joined the server'.format(member), 1)
+
+
+
+@client.event
+async def on_raw_reaction_remove(payload):
+  if (payload.user_id == client.user.id):
+    return
+  try:
+    await log('{0.member.display_name} has removed reaction {0.emoji} in {0.channel_id}'.format(payload), 0)
+  except:
+    await log('{0.user_id} has removed reaction {0.emoji} in {0.channel_id}'.format(payload), 0)
+  if (payload.message_id == 932827444933718088):
+    await add_role(payload.user_id, roles["club"])
+    await log('{0.user_id} has removed the club  role'.format(payload), 0)
+
+
 
 @client.event
 async def on_raw_reaction_add(payload):
   if (payload.user_id == client.user.id):
     return
+  try:
+    await log('{0.member.display_name} has reacted with {0.emoji} in {0.channel_id}'.format(payload), 0)
+  except:
+    await log('{0.user_id} has reacted with {0.emoji} in {0.channel_id}'.format(payload), 0)
+
+  if (payload.message_id == 932827444933718088):
+    await add_role(payload.user_id, roles["club"])
+    await log('{0.user_id} has been given the club role'.format(payload), 0)
   if(is_new(payload.user_id)):
+    #TODO handle better
     return
   user = get_user(payload.user_id)
+  
   if (payload.message_id == user["react_msg_id"]):
     if (user["conv_state"] == 0):
       if ([f"0x{ord(c):08x}" for c in payload.emoji.name] == ['0x00000031', '0x0000fe0f', '0x000020e3']):
@@ -77,13 +130,19 @@ async def on_raw_reaction_add(payload):
         await log_print(client, "Sending manual verification message to" + user_obj.display_name)
         await user_obj.send(messages["manual"])
         user["conv_state"] = 4
+  print("reaction")
   await update_user(user, client)
+
 
 # TODO if conv = 0 and msgid = None send welcome
 @client.event
 async def on_message(message):
+  
   if message.author == client.user:
     return
+  if message.author.bot:
+    return
+  print("Triggered: " + message.author.display_name)
   if(is_admin(message.author.id)):
     cmd = message.content.split()
 
@@ -94,7 +153,8 @@ async def on_message(message):
     
     # --- DELETE ---
     elif(message.content.startswith("$delete")):
-      delete_user(cmd[1])
+      delete_user(id = cmd[1])
+      await message.author.send("User deleted from database")
     
     # --- RESET ---
     elif(message.content.startswith("$delete")):
@@ -175,6 +235,7 @@ async def on_message(message):
       if (user["attempts"] >= 10):
         user["conv_state"] = 90
         await message.author.send(messages["limit_reached"])
+  print("msg")
   await update_user(user, client)
 
 

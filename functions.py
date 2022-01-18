@@ -8,7 +8,7 @@ messages = db["messages"]
 async def initial_message(client, member = None, id = None):
   if(id):
     member = client.fetch_user(id)
-  log_print(client, "Sending welcome message to " + member.display_name)
+  await log_print(client, "Sending welcome message to " + member.display_name)
   user = add_user(member.id)
   msg = await member.send(db["messages"]["welcome"])
   for emoji in db["messages"]["welcome_reactions"]:
@@ -53,6 +53,7 @@ def get_user(id):
 async def update_user(user, client):
   db[str(user["user_id"])] = user
   guild = client.get_guild(623986499477700652)
+  print(guild)
   member = guild.get_member(user["user_id"])
   engclub = guild.get_role(931759411641331752)
   eng = guild.get_role(887072932604575796)
@@ -118,5 +119,3 @@ def sendVerification(user):
   sendEmail(port = port, server = server, sender = sender, receiver = receiver, password = password, message = message, reply = "siebt19@mytru.ca", sender_nick = "TRUSU Engineering Club", subject = subject, username = username)
 
 
-
-  
