@@ -5,6 +5,37 @@ import smtplib, ssl
 
 messages = db["messages"]
 
+def get_message(key):
+  return db["messages"][key]
+
+def get_role(key):
+  return db["roles"][key]
+
+async def log(client, message, channel):
+  if channel == 0:
+    log0 = await client.fetch_channel(932902698926374943)
+    await log0.send(message)
+  else:
+    log0 = await client.fetch_channel(932902698926374943)
+    log1 = await client.fetch_channel(750519246269972490)
+    await log0.send(message)
+    await log1.send(message)
+  print(message)
+
+#TODO combine add/remove functions
+async def add_role(client, user_id, role_id):
+  guild = client.get_guild(623986499477700652)
+  member = guild.get_member(user_id)
+  role = guild.get_role(role_id)
+  await member.add_roles(role)
+
+async def remove_role(client, user_id, role_id):
+  guild = client.get_guild(623986499477700652)
+  member = guild.get_member(user_id)
+  role = guild.get_role(role_id)
+  await member.remove_roles(role)
+
+
 async def initial_message(client, member = None, id = None):
   if(id):
     member = client.fetch_user(id)
@@ -14,7 +45,7 @@ async def initial_message(client, member = None, id = None):
   for emoji in db["messages"]["welcome_reactions"]:
     await msg.add_reaction(emoji)
   user["react_msg_id"] = msg.id
-  await update_user(user, client)
+  await update_user(client, user)
 
 
 def is_admin(id):
@@ -50,7 +81,7 @@ def add_user(id):
 def get_user(id):
   return db.get(str(id))
 
-async def update_user(user, client):
+async def update_user(client, user):
   db[str(user["user_id"])] = user
   guild = client.get_guild(623986499477700652)
   print(guild)
