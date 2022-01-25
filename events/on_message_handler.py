@@ -1,4 +1,4 @@
-from functions import *
+from functions import is_admin, initial_message, delete_user, get_user, update_user, send_admin_mail, is_new, add_user, sendVerification, log_print, get_message, log
 import random
 
 async def on_message_handler__(client, message):
@@ -7,40 +7,58 @@ async def on_message_handler__(client, message):
   if message.author.bot:
     return
   print("Triggered: " + message.author.display_name)
+  await log_print(client, '{0.author.display_name} messaged {0.content}'.format(message))
   if(is_admin(message.author.id)):
     cmd = message.content.split()
 
   # ---- ADMIN COMMANDS ----
     # --- ADD ---
     if(message.content.startswith("$add")):
-      initial_message(client, member = None, id = cmd[1])
-    
+      await initial_message(client, member = None, id = int(cmd[1]))
+      try:
+        await log(client, '{0.author.display_name} used the $add command on {1}'.format(message, client.get_user(int(cmd[1]))), 0)
+      except:
+        await log(client, '{0.author.display_name} used the $add command on {1}'.format(message, cmd[1]), 0)
+        
     # --- DELETE ---
     elif(message.content.startswith("$delete")):
       delete_user(id = cmd[1])
       await message.author.send("User deleted from database")
+      try:
+        await log(client, '{0.author.display_name} used the $delete command on {1}'.format(message, client.get_user(int(cmd[1]))), 0)
+      except:
+        await log(client, '{0.author.display_name} used the $delete command on {1}'.format(message, cmd[1]), 0)
     
     # --- RESET ---
-    elif(message.content.startswith("$delete")):
+    elif(message.content.startswith("$reset")):
       user = get_user(cmd[1])
       user["conv_state"] = 0
-      update_user(client, user)
-      initial_message(client, member = None, id = cmd[1])
+      await update_user(client, user)
+      await initial_message(client, member = None, id = int(cmd[1]))
+      try:
+        await log(client, '{0.author.display_name} used the $reset command on {1}'.format(message, client.get_user(cmd[1])), 0)
+      except:
+        await log(client, '{0.author.display_name} used the $reset command on {1}'.format(message, cmd[1]), 0)
     
     # --- EMAIL ---
     elif(message.content.startswith("$email")):
       await message.author.send("""sender = \"\", receiver = \"\", message = \"\", sender_nick = \"\", subject = \"\",reply = \"\"""")
     elif(message.content.startswith("$send")):
       send_admin_mail(sender = cmd[1], receiver = cmd[2], message = cmd[3], sender_nick = cmd[4], subject = cmd[5], reply = cmd[6])
+      try:
+        await log(client, '{0.author.display_name} sent an email to {1}'.format(message, cmd[2]), 0)
+      except:
+        await log(client, '{0.author.display_name} used the $add command on {1}'.format(message, cmd[2]), 0)
 
     # --- MSG ---
     elif(message.content.startswith("$msg")):
       try:
         msg = ""
         for i in cmd[2:]:
-          msg += i
-        target = await client.fetch_user(cmd[1])
+          msg += i + " "
+        target = await client.fetch_user(int(cmd[1]))
         await target.send(msg)
+        await log(client, '{0.author.display_name} used the $msg command on {1} to send {2}'.format(message, client.get_user(int(cmd[1])), msg), 0)
       except Exception as e:
         print(e)
         await message.author.send("Invalid target")
@@ -56,8 +74,8 @@ async def on_message_handler__(client, message):
   # ---- USER DM COMMANDS ----
     # --- RESTART ---
     if(message.content.startswith("restart")):
-      user["conv_state"] = 0
-      user["react_msg_id"] = None
+      delete_user(id = message.author.id)
+      user = add_user(message.author.id)
 
     # --- RESEND ---
     elif (message.content.startswith("resend") and user["conv_state"] == 3):
@@ -69,9 +87,9 @@ async def on_message_handler__(client, message):
       await message.author.send(get_message("email"))
       user["conv_state"] = 2
 
-    #TODO move back to function
     if(user["conv_state"] == 0 and user["react_msg_id"] == None):
       await initial_message(client, message.author)
+      user = get_user(message.author.id)
       
     elif (user["conv_state"] == 2):
       if (message.content.strip().find("@mytru.ca", 1) != -1 or message.content.strip().find("@tru.ca", 1) != -1):
@@ -90,6 +108,7 @@ async def on_message_handler__(client, message):
           await log_print(client, "Sending complete message to " + message.author.display_name)
           await message.author.send(get_message("complete"))
           user["conv_state"] = 96
+          await log(client, '{0.author.display_name} has completed verification.'.format(message), 1)
         else:
           user["attempts"] += 1
           await log_print(client, "User has made " + str(user["attempts"]) + "attempts")

@@ -1,4 +1,4 @@
-from functions import *
+from functions import log, initial_message
 
 async def on_member_join_handler__(client, member):
   if (member == client.user):

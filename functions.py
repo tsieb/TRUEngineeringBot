@@ -1,7 +1,6 @@
-import discord
-import os
 from replit import db
 import smtplib, ssl
+import os
 
 messages = db["messages"]
 
@@ -38,7 +37,7 @@ async def remove_role(client, user_id, role_id):
 
 async def initial_message(client, member = None, id = None):
   if(id):
-    member = client.fetch_user(id)
+    member = client.get_user(id)
   await log_print(client, "Sending welcome message to " + member.display_name)
   user = add_user(member.id)
   msg = await member.send(db["messages"]["welcome"])
@@ -84,7 +83,6 @@ def get_user(id):
 async def update_user(client, user):
   db[str(user["user_id"])] = user
   guild = client.get_guild(623986499477700652)
-  print(guild)
   member = guild.get_member(user["user_id"])
   engclub = guild.get_role(931759411641331752)
   eng = guild.get_role(887072932604575796)

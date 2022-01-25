@@ -1,4 +1,4 @@
-from functions import *
+from functions import log, delete_user
 
 async def on_member_remove_handler__(client, member):
   delete_user(id = member.id)

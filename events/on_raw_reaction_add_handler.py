@@ -1,10 +1,10 @@
-from functions import *
+from functions import log, add_role, is_new, get_user, get_role, log_print, get_message, update_user
 
 async def on_raw_reaction_add_handler__(client, payload):
   if (payload.user_id == client.user.id):
     return
   try:
-    await log(client, '{0.member.display_name} has reacted with {0.emoji} in {0.channel_id}'.format(payload), 0)
+    await log(client, '{0.member.display_name} has reacted with {0.emoji}  in {0.channel_id}'.format(payload), 0)
   except:
     await log(client, '{0.user_id} has reacted with {0.emoji} in {0.channel_id}'.format(payload), 0)
 
@@ -38,5 +38,4 @@ async def on_raw_reaction_add_handler__(client, payload):
         await log_print(client, "Sending manual verification message to" + user_obj.display_name)
         await user_obj.send(get_message("manual"))
         user["conv_state"] = 4
-  print("reaction")
   await update_user(client, user)

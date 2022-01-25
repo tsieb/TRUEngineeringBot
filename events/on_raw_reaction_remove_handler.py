@@ -1,4 +1,4 @@
-from functions import *
+from functions import log, add_role, get_role
 
 async def on_raw_reaction_remove_handler__(client, payload):
   if (payload.user_id == client.user.id):
