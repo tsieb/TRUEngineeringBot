@@ -7,8 +7,22 @@ messages = db["messages"]
 def get_message(key):
   return db["messages"][key]
 
+
 def get_role(key):
   return db["roles"][key]
+
+def filter_triggers(client, message = None, member = None, payload = None):
+  if message:
+    user = message.author
+  elif member:
+    user = member
+  elif payload:
+    return(True)
+  if (user == client.user):
+    return(False)
+  if (user.bot):
+    return(False)
+  return(True)
 
 async def log(client, message, channel):
   if channel == 0:
@@ -21,12 +35,14 @@ async def log(client, message, channel):
     await log1.send(message)
   print(message)
 
+
 #TODO combine add/remove functions
 async def add_role(client, user_id, role_id):
   guild = client.get_guild(623986499477700652)
   member = guild.get_member(user_id)
   role = guild.get_role(role_id)
   await member.add_roles(role)
+
 
 async def remove_role(client, user_id, role_id):
   guild = client.get_guild(623986499477700652)
@@ -65,10 +81,12 @@ async def log_print(client, message):
   channel = await client.fetch_channel(id)
   await channel.send(message)
 
+
 def is_new(id):
   if str(id) in db:
     return False
   return True
+
 
 def add_user(id):
   if str(id) in db:
@@ -77,8 +95,10 @@ def add_user(id):
       db[str(id)] = getDefaultUser(id)
   return(db[str(id)])
 
+
 def get_user(id):
-  return db.get(str(id))
+  return complete_user_data(db.get(str(id)))
+
 
 async def update_user(client, user):
   db[str(user["user_id"])] = user
@@ -100,7 +120,6 @@ async def update_user(client, user):
     await member.add_roles(unv)
   
 
-
 def delete_user(user = None, id = None):
   if user != None:
     id = str(user["user_id"])
@@ -111,12 +130,21 @@ def delete_user(user = None, id = None):
     print("Unable to find user")
 
 
+def complete_user_data(user):
+  default = getDefaultUser(user["user_id"])
+  for key in default:
+    if key not in user:
+      user[key] = default[key]
+  return user
+
 
 def getDefaultUser(id):
-  return({"user_id": id, "conv_state": 0, "purpose": None, "email": None, "react_msg_id": None, "verify_code": None, "attempts": 0})
+  return({"user_id": id, "conv_state": 0, "purpose": None, "email": None, "react_msg_id": None, "verify_code": None, "attempts": 0, "response":{}})
+
 
 def send_admin_mail(sender = "", receiver = "", message = "", sender_nick = "", subject = "",reply = ""):
   sendEmail(port = 465, server = "mail.sieb.net", sender = sender, receiver = receiver, password = os.environ['mail_pass'], message = message, reply = reply, sender_nick = sender_nick, subject = subject, username = os.environ['username'])
+
 
 def sendEmail(port = 465, server = "", sender = "", receiver = "", password = "", message = "", reply = "", sender_nick = "", subject = "", username = ""):
   if (username == ""):
@@ -134,6 +162,7 @@ Subject: {subject}
       server.login(username, password)
       server.sendmail(sender, receiver, message)
   print("Sent email to:", receiver)
+
 
 def sendVerification(user):
   print("attempting send")
