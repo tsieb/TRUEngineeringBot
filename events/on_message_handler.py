@@ -1,4 +1,4 @@
-from functions import is_admin, initial_message, delete_user, get_user, update_user, send_admin_mail, is_new, add_user, sendVerification, log_print, get_message, log
+from functions import is_admin, initial_message, delete_user, get_user, update_user, send_admin_mail, is_new, add_user, sendVerification, log_print, get_message, log, dm_print
 import random
 
 async def on_message_handler__(client, message):
@@ -118,4 +118,8 @@ async def on_message_handler__(client, message):
       if (user["attempts"] >= 10):
         user["conv_state"] = 90
         await message.author.send(get_message("limit_reached"))
+    elif (user["conv_state"] == 4):
+      await log_print(client, "Sending manual response message to" + message.author.display_name)
+      await message.author.send(get_message("manual_response"))
+      await dm_print(client, "{0.author} has sent \"{0.content}\" as their reason for requesting to join.".format(message))
   await update_user(client, user)

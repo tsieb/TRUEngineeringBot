@@ -35,6 +35,7 @@ async def on_raw_reaction_add_handler__(client, payload):
         await user_obj.send(get_message("email"))
         user["conv_state"] = 2
       else:
+        user_obj = client.get_user(payload.user_id)
         await log_print(client, "Sending manual verification message to" + user_obj.display_name)
         await user_obj.send(get_message("manual"))
         user["conv_state"] = 4
