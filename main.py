@@ -1,10 +1,10 @@
+from db_elements import define_messages, define_roles, define_commands, define_global_responses, define_settings
 from events.on_raw_reaction_remove_handler import on_raw_reaction_remove_handler__
 from events.on_raw_reaction_add_handler import on_raw_reaction_add_handler__
 from events.on_member_remove_handler import on_member_remove_handler__
 from events.on_member_join_handler import on_member_join_handler__
 from events.on_message_handler import on_message_handler__
-from db_elements import define_messages, define_roles, define_commands
-from functions import log, sendEmail
+from functions import log, sendEmail, filter_trigger
 from keep_alive import keep_alive
 from datetime import datetime
 import discord
@@ -30,9 +30,12 @@ import os
 print("Starting...")
 
 # Initialize Database
+define_global_responses()
 define_messages()
 define_commands()
+define_settings()
 define_roles()
+
 
 # Initialize client
 intents = discord.Intents.default()
@@ -46,22 +49,32 @@ async def on_ready():
 
 @client.event
 async def on_member_remove(member):
+  if filter_trigger(client, member = member):
+    return
   await on_member_remove_handler__(client, member)
 
 @client.event
 async def on_member_join(member):
+  if filter_trigger(client, member = member):
+    return
   await on_member_join_handler__(client, member)
 
 @client.event
 async def on_raw_reaction_remove(payload):
+  if filter_trigger(client, payload = payload):
+    return
   await on_raw_reaction_remove_handler__(client, payload)
 
 @client.event
 async def on_raw_reaction_add(payload):
+  if filter_trigger(client, payload = payload):
+    return
   await on_raw_reaction_add_handler__(client, payload)
 
 @client.event
 async def on_message(message):
+  if filter_trigger(client, message = message):
+    return
   await on_message_handler__(client, message)
 
 

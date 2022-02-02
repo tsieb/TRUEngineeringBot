@@ -11,18 +11,18 @@ def get_message(key):
 def get_role(key):
   return db["roles"][key]
 
-def filter_triggers(client, message = None, member = None, payload = None):
+def filter_trigger(client, message = None, member = None, payload = None):
   if message:
     user = message.author
   elif member:
     user = member
   elif payload:
-    return(True)
+    return(False)
   if (user == client.user):
-    return(False)
+    return(True)
   if (user.bot):
-    return(False)
-  return(True)
+    return(True)
+  return(False)
 
 async def log(client, message, channel):
   if channel == 0:
@@ -89,15 +89,16 @@ def is_new(id):
 
 
 def add_user(id):
-  if str(id) in db:
-      print("User already exists")
-  else:
-      db[str(id)] = getDefaultUser(id)
-  return(db[str(id)])
+  return get_user(id)
 
 
 def get_user(id):
-  return complete_user_data(db.get(str(id)))
+  if str(id) in db:
+    return complete_user_data(db.get(str(id)))
+  else:
+    user = getDefaultUser(id)
+    db[str(id)] = user
+    return(user)
 
 
 async def update_user(client, user):
@@ -118,7 +119,7 @@ async def update_user(client, user):
       await member.add_roles(engclub)
   else:
     await member.add_roles(unv)
-  
+
 
 def delete_user(user = None, id = None):
   if user != None:
@@ -139,7 +140,7 @@ def complete_user_data(user):
 
 
 def getDefaultUser(id):
-  return({"user_id": id, "conv_state": 0, "purpose": None, "email": None, "react_msg_id": None, "verify_code": None, "attempts": 0, "response":{}})
+  return({"user_id": id, "purpose": None, "email": None, "verify_code": None, "attempts": 0, "response":{}, "role": "user"})
 
 
 def send_admin_mail(sender = "", receiver = "", message = "", sender_nick = "", subject = "",reply = ""):
