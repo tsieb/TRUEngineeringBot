@@ -140,7 +140,7 @@ def complete_user_data(user):
 
 
 def getDefaultUser(id):
-  return({"user_id": id, "purpose": None, "email": None, "verify_code": None, "attempts": 0, "response":{}, "role": "user"})
+  return({"user_id": id, "purpose": [], "email": None, "verify_code": None, "attempts": 0, "response":{}, "role": "user"})
 
 
 def send_admin_mail(sender = "", receiver = "", message = "", sender_nick = "", subject = "",reply = ""):
@@ -178,3 +178,5 @@ def sendVerification(user):
   sendEmail(port = port, server = server, sender = sender, receiver = receiver, password = password, message = message, reply = "siebt19@mytru.ca", sender_nick = "TRUSU Engineering Club", subject = subject, username = username)
 
 
+def get_secret(name):
+  return os.environ[name]

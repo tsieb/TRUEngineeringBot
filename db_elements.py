@@ -10,12 +10,12 @@ def define_roles():
   db["roles"] = roles
 
 def define_commands():
-  commands = {"admin":{"add":adm_add, "delete":adm_delete, "reset":adm_reset, "email":adm_email, "send":adm_send, "msg":adm_msg, "vote":adm_vote}, "user":{"restart": cmd_restart, "resend":cmd_resend , "change": cmd_change}}
+  commands = {"admin":{"add":["commands ", "adm_add"], "delete":["commands ", "adm_delete"], "reset":["commands ", "adm_reset"], "email":["commands ", "adm_email"], "send":["commands ", "adm_send"], "msg":["commands ", "adm_msg"], "vote":["commands ", "adm_vote"]}, "user":{"restart": ["commands ", "cmd_restart"], "resend":["commands ", "cmd_resend"] , "change": ["commands ", "cmd_change"]}}
   db["commands"] = commands
 
 
 def define_global_responses():
-  global_responses = {"member":{"welcome":{"location":["dm":None], "handler":welcome_handler, "reaction":[["\U00000031\U0000fe0f\U000020e3", ['0x00000031', '0x0000fe0f', '0x000020e3'], ["student"]], ["\U00000032\U0000fe0f\U000020e3", ['0x00000032', '0x0000fe0f', '0x000020e3'], ["club"]], ["\U00000033\U0000fe0f\U000020e3", ['0x00000033', '0x0000fe0f', '0x000020e3'], ["student", "club"]], ["\U00000034\U0000fe0f\U000020e3", ['0x00000034', '0x0000fe0f', '0x000020e3'], ["other"]], ["\U00000035\U0000fe0f\U000020e3", ['0x00000035', '0x0000fe0f', '0x000020e3'], ["faculty"]], ["🛑", ['0x0001f6d1'], None]]}}
+  global_responses = {"member":{"welcome":{"location":["dm", None], "handler":["welcome", "welcome_handler"]}}}
   db["global_responses"] = global_responses
 
 def define_settings():
