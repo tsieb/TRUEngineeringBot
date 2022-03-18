@@ -11,5 +11,3 @@ Each event trigger has a handler function in a dedicated file.
 All the data is stored in the Replit database.
 Data is stored for each user.
 Entry for messages and triggers
-
-Demo change
