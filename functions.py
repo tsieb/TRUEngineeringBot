@@ -25,11 +25,11 @@ def filter_trigger(client, message = None, member = None, payload = None):
 
 async def log(client, message, channel):
   if channel == 0:
-    log0 = await client.fetch_channel(932902698926374943)
+    log0 = await client.fetch_channel(954343262146162698)
     await log0.send(message)
   else:
-    log0 = await client.fetch_channel(932902698926374943)
-    log1 = await client.fetch_channel(750519246269972490)
+    log0 = await client.fetch_channel(954343262146162698)
+    log1 = await client.fetch_channel(954337386932871188)
     await log0.send(message)
     await log1.send(message)
   print(message)
