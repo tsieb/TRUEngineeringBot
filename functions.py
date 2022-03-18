@@ -2,7 +2,6 @@ from replit import db
 import smtplib, ssl
 import os
 
-messages = db["messages"]
 
 def get_message(key):
   return db["messages"][key]
