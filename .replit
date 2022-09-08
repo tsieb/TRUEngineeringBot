@@ -1,0 +1,2 @@
+run="pip install discord;python main.py install;"
+language="python3"

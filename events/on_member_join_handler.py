@@ -1,7 +1,13 @@
-from functions import log, initial_message
+import importlib
+from functions import log_print
+
+response_handler = importlib.machinery.SourceFileLoader('response_handler', 'response/response_handler.py').load_module()
 
 async def on_member_join_handler__(client, member):
-  if (member == client.user):
+  await log_print(client, '{0.display_name} joined'.format(member))
+  print(member.display_name, "joined")
+
+  if (await response_handler.private_response_handler(client, member = [member, "join"])):
     return
-  await initial_message(client, member)
-  await log(client, '{0.display_name} has joined the server'.format(member), 1)
+  if (await response_handler.global_response_handler(client, member = [member, "join"])):
+    return
